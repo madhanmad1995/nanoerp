@@ -836,7 +836,7 @@ class Invoices(ttk.Frame):
                     display_string += f" ✉ {customer.email}"
                 display_string += f" (ID: {customer.id})"
                 
-                self.customer.set(display_string)
+                self.customer_search.set(display_string)
                 # self.show_customer_info(customer)
                 
                 messagebox.showinfo("Success", "Customer added successfully!")
