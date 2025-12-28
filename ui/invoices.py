@@ -423,6 +423,14 @@ class Invoices(ttk.Frame):
                                    state="readonly", width=12)
         status_combo.pack(side=tk.LEFT, padx=5)
         status_combo.bind('<<ComboboxSelected>>', lambda e: self.load_invoices())
+        # Payment method filter (only for paid invoices)
+        ttk.Label(filter_frame, text="Payment Method:").pack(side=tk.LEFT, padx=(20, 0))
+        self.payment_method_var = tk.StringVar(value="All")
+        payment_methods = ["All", "Cash", "Card", "Credit", "UPI"]
+        payment_combo = ttk.Combobox(filter_frame, textvariable=self.payment_method_var, 
+                            values=payment_methods, state="readonly", width=12)
+        payment_combo.pack(side=tk.LEFT, padx=5)
+        payment_combo.bind('<<ComboboxSelected>>', lambda e: self.load_invoices())
         
         # Month filter
         ttk.Label(filter_frame, text="Month:").pack(side=tk.LEFT, padx=(20, 0))
@@ -600,6 +608,26 @@ class Invoices(ttk.Frame):
         self.subtotal_var = tk.StringVar(value="₹0.00")
         ttk.Label(totals_frame, textvariable=self.subtotal_var, 
                  font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=5)
+        # Discount
+        ttk.Label(totals_frame, text="Discount:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(20, 0))
+        self.discount_type = tk.StringVar(value="percentage")  # "percentage" or "amount"
+        discount_type_combo = ttk.Combobox(totals_frame, textvariable=self.discount_type, 
+                                      values=["percentage", "amount"], state="readonly", width=10)
+        discount_type_combo.pack(side=tk.LEFT, padx=5)
+    
+        self.discount_value = tk.DoubleVar(value=0.0)
+        discount_spin = ttk.Spinbox(totals_frame, from_=0, to=10000, 
+                               textvariable=self.discount_value, width=8)
+        discount_spin.pack(side=tk.LEFT, padx=5)
+        self.discount_amount_var = tk.StringVar(value="₹0.00")
+        ttk.Label(totals_frame, textvariable=self.discount_amount_var).pack(side=tk.LEFT, padx=5)
+        discount_type_combo.bind('<<ComboboxSelected>>', lambda e: self.calculate_totals())
+        discount_spin.bind('<KeyRelease>', lambda e: self.calculate_totals())
+        discount_spin.bind('<<Increment>>', lambda e: self.calculate_totals())
+        discount_spin.bind('<<Decrement>>', lambda e: self.calculate_totals())
+    
+        self.discount_amount_var = tk.StringVar(value="₹0.00")
+        ttk.Label(totals_frame, textvariable=self.discount_amount_var).pack(side=tk.LEFT, padx=5)    
         
         # Tax
         ttk.Label(totals_frame, text="Tax (%):", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(20, 0))
@@ -714,11 +742,6 @@ class Invoices(ttk.Frame):
                     # Update combobox to show full string with ID
                     self.customer_search.set(display_str)
                     break
-        
-        # if customer:
-        #     self.show_customer_info(customer)
-        # else:
-        #     self.hide_customer_info()
     
     # def show_customer_info(self, customer):
     #     """Show customer information panel"""
@@ -813,7 +836,7 @@ class Invoices(ttk.Frame):
                     display_string += f" ✉ {customer.email}"
                 display_string += f" (ID: {customer.id})"
                 
-                self.customer_var.set(display_string)
+                self.customer.set(display_string)
                 # self.show_customer_info(customer)
                 
                 messagebox.showinfo("Success", "Customer added successfully!")
@@ -883,6 +906,12 @@ class Invoices(ttk.Frame):
         # Build WHERE clause based on filters
         where_clauses = []
         params = []
+
+         # Payment method filter
+        payment_method = self.payment_method_var.get()
+        if payment_method != "All":
+            where_clauses.append("EXISTS (SELECT 1 FROM payments p WHERE p.invoice_id = i.id AND p.method = ?)")
+            params.append(payment_method)
         
         # Status filter
         status = self.status_var.get()
@@ -1012,21 +1041,19 @@ class Invoices(ttk.Frame):
             display_string += f" (ID: {row['customer_id']})"
             
             self.customer_search.set(display_string)
-            
-            # # Show customer info
-            # customer = Customer(
-            #     id=row['customer_id'],
-            #     name=row['customer_name'],
-            #     phone=row['customer_phone'] or "",
-            #     email=row['customer_email'] or ""
-            # )
-            # self.show_customer_info(customer)
         else:
             self.customer_search.set("Walk-in Customer")
-            self.hide_customer_info()
-        
         # Set tax rate
         self.tax_rate_var.set(self.current_invoice.tax_rate)
+         # Set discount values if they exist in the invoice
+        if hasattr(self.current_invoice, 'discount_amount') and self.current_invoice.discount_amount > 0:
+            self.discount_value.set(self.current_invoice.discount_amount)
+            self.discount_type.set("amount")
+        elif hasattr(self.current_invoice, 'discount_percentage') and self.current_invoice.discount_percentage > 0:
+            self.discount_value.set(self.current_invoice.discount_percentage)
+            self.discount_type.set("percentage")
+        else:
+            self.discount_value.set(0.0)
         
         # Set notes
         self.notes_text.delete(1.0, tk.END)
@@ -1072,14 +1099,50 @@ class Invoices(ttk.Frame):
             ), tags=(str(idx),))
     
     def calculate_totals(self):
-        """Calculate invoice totals"""
+        """Calculate invoice totals with discount"""
         subtotal = sum(item.total for item in self.invoice_items)
-        tax_rate = self.tax_rate_var.get()
-        tax_amount = subtotal * (tax_rate / 100)
-        total = subtotal + tax_amount
+        # Get tax rate safely
+        tax_rate = 0.0
+        try:
+            if hasattr(self, 'tax_rate_var') and self.tax_rate_var:
+                tax_rate_str = self.tax_rate_var.get()
+                if tax_rate_str:
+                    tax_rate = float(tax_rate_str)
+        except (AttributeError, tk.TclError, ValueError):
+            tax_rate = 0.0
+    
+        # Calculate discount
+        discount_value= 0.0
+        discount_type = "percentage"
+        discount_amount = 0.0
         
+        try:
+            if hasattr(self, 'discount_value') and self.discount_value:
+                discount_value = self.discount_value.get()
+            if hasattr(self, 'discount_type') and self.discount_type:
+                discount_type = self.discount_type.get()
+        except (AttributeError, tk.TclError):
+            # Handle case where variables aren't initialized yet
+            discount_value = 0.0
+            discount_type = "percentage"
+    
+        if discount_type == "percentage":
+            discount_amount = subtotal * (discount_value / 100)
+        else:
+            discount_amount = min(discount_value, subtotal)  # Can't discount more than subtotal
+    
+        # Calculate taxable amount (after discount)
+        taxable_amount = subtotal - discount_amount
+    
+        # Calculate tax and total
+        tax_amount = taxable_amount * (tax_rate / 100)
+        total = taxable_amount + tax_amount
+    
         # Update display
         self.subtotal_var.set(f"₹{subtotal:.2f}")
+        # Only update discount_amount_var if it exists
+        if hasattr(self, 'discount_amount_var'):
+            self.discount_amount_var.set(f"₹{discount_amount:.2f}")
         self.tax_amount_var.set(f"₹{tax_amount:.2f}")
         self.total_var.set(f"₹{total:.2f}")
     
@@ -1101,7 +1164,6 @@ class Invoices(ttk.Frame):
         
         # Set default customer to Walk-in
         self.customer_search.set("Walk-in Customer")
-        # self.hide_customer_info()
         
         # Enable save button
         self.save_btn.config(state=tk.NORMAL)
@@ -1135,7 +1197,6 @@ class Invoices(ttk.Frame):
         self.mark_paid_btn.config(state=tk.DISABLED)
         self.invoice_tree.selection_remove(self.invoice_tree.selection())
         self.update_items_tree()
-        # self.hide_customer_info()
         
         # Reload customers
         self.load_customers()
@@ -1387,6 +1448,41 @@ class Invoices(ttk.Frame):
         invoice.tax_rate = self.tax_rate_var.get()
         invoice.notes = self.notes_text.get(1.0, tk.END).strip()
         invoice.items = self.invoice_items
+
+        # Calculate and store discount
+        subtotal = sum(item.total for item in self.invoice_items)
+        discount_value =  0.0
+        discount_type = "percentage"
+
+        try:
+            if hasattr(self, 'discount_value') and self.discount_value:
+                discount_value = self.discount_value.get()
+            if hasattr(self, 'discount_type') and self.discount_type:    
+                discount_type = self.discount_type.get()
+        except (AttributeError, tk.TclError):
+            discount_value = 0.0
+            discount_type = "percentage"
+        # Create or update invoice with discount
+        if self.current_invoice:
+            invoice = self.current_invoice
+        else:
+            invoice = Invoice()    
+        invoice.invoice_number = self.invoice_num_var.get()
+        invoice.customer_id = customer_id
+        invoice.date = invoice_date
+        invoice.due_date = due_date
+        invoice.tax_rate = self.tax_rate_var.get()
+        invoice.notes = self.notes_text.get(1.0, tk.END).strip()
+        invoice.items = self.invoice_items 
+         # Set discount values
+        if discount_type == "percentage":
+            invoice.discount_percentage = discount_value
+            invoice.discount_amount = subtotal * (discount_value / 100)
+        else:
+            invoice.discount_amount = min(discount_value, subtotal)
+            invoice.discount_percentage = (invoice.discount_amount / subtotal * 100) if subtotal > 0 else 0
+        # Calculate discounted subtotal
+        invoice.discounted_subtotal = subtotal - invoice.discount_amount
         
         try:
             # Start transaction
@@ -1509,43 +1605,90 @@ class Invoices(ttk.Frame):
         """Mark invoice as paid"""
         if not self.current_invoice or self.current_invoice.status != 'pending':
             return
+        # Create payment method dialog
+        dialog = tk.Toplevel(self)
+        dialog.title("Record Payment")
+        dialog.geometry("400x250")
+        dialog.transient(self)
+        dialog.grab_set()
+        # Center dialog
+        dialog.update_idletasks()
+        width = dialog.winfo_width()
+        height = dialog.winfo_height()
+        x = (dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (dialog.winfo_screenheight() // 2) - (height // 2)
+        dialog.geometry(f'{width}x{height}+{x}+{y}')
         
-        # Confirm
-        if not messagebox.askyesno("Confirm", 
-                                  f"Mark invoice #{self.current_invoice.invoice_number} as paid?"):
-            return
+        frame = ttk.Frame(dialog, padding=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+        # Payment details
+        ttk.Label(frame, text="Record Payment", font=('Arial', 14, 'bold')).grid(
+            row=0, column=0, columnspan=2, pady=(0, 10))
+    
+        ttk.Label(frame, text="Invoice Total:", font=('Arial', 10, 'bold')).grid(
+            row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Label(frame, text=f"₹{self.current_invoice.total:.2f}", 
+             font=('Arial', 10, 'bold')).grid(row=1, column=1, sticky=tk.W, pady=5)
+    
+        ttk.Label(frame, text="Payment Method:", font=('Arial', 10, 'bold')).grid(
+            row=2, column=0, sticky=tk.W, pady=5)
+    
+        payment_methods = ["Cash", "Card", "Credit", "UPI"]
+        payment_method_var = tk.StringVar(value="Cash")
+        payment_combo = ttk.Combobox(frame, textvariable=payment_method_var, 
+                                values=payment_methods, state="readonly", width=15)
+        payment_combo.grid(row=2, column=1, sticky=tk.W, pady=5)
+    
+        ttk.Label(frame, text="Payment Date:", font=('Arial', 10, 'bold')).grid(
+            row=3, column=0, sticky=tk.W, pady=5)
+        payment_date_var = tk.StringVar(value=date.today().strftime("%Y-%m-%d"))
+        payment_date_entry = ttk.Entry(frame, textvariable=payment_date_var, width=15)
+        payment_date_entry.grid(row=3, column=1, sticky=tk.W, pady=5)
+
+        def record_payment():
+            method = payment_method_var.get()
+            payment_date = payment_date_var.get()
         
-        try:
-            # Update status
-            db.execute('UPDATE invoices SET status="paid" WHERE id=?', 
-                      (self.current_invoice.id,))
+            try:
+                # Update status
+                db.execute('UPDATE invoices SET status="paid" WHERE id=?', 
+                            (self.current_invoice.id,))
             
-            # Record payment
-            db.execute('''
-                INSERT INTO payments (invoice_id, amount, payment_date, method)
-                VALUES (?, ?, ?, ?)
-            ''', (self.current_invoice.id, self.current_invoice.total, 
-                  date.today().strftime("%Y-%m-%d"), "cash"))
+                # Record payment
+                db.execute('''
+                    INSERT INTO payments (invoice_id, amount, payment_date, method)
+                    VALUES (?, ?, ?, ?)
+                    ''', (self.current_invoice.id, self.current_invoice.total, 
+                            payment_date, method))
             
-            # Commit transaction
-            if db.connection:
-                db.connection.commit()
+                # Commit transaction
+                if db.connection:
+                    db.connection.commit()
             
-            # Update current invoice
-            self.current_invoice.status = 'paid'
+                # Update current invoice
+                self.current_invoice.status = 'paid'
             
-            # Disable mark paid button
-            self.mark_paid_btn.config(state=tk.DISABLED)
+                # Disable mark paid button
+                self.mark_paid_btn.config(state=tk.DISABLED)
             
-            # Refresh list
-            self.load_invoices()
+                # Refresh list
+                self.load_invoices()
             
-            messagebox.showinfo("Success", "Invoice marked as paid!")
-            
-        except Exception as e:
-            if db.connection:
-                db.connection.rollback()
-            messagebox.showerror("Error", f"Failed to update invoice: {str(e)}")
+                messagebox.showinfo("Success", f"Invoice marked as paid via {method}!")
+                dialog.destroy()
+            except Exception as e:
+                if db.connection:
+                    db.connection.rollback()
+                messagebox.showerror("Error", f"Failed to update invoice: {str(e)}")
+                    
+        # Buttons
+        btn_frame = ttk.Frame(frame)
+        btn_frame.grid(row=4, column=0, columnspan=2, pady=20)
+    
+        ttk.Button(btn_frame, text="Record Payment", 
+                  command=record_payment).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="Cancel", 
+                  command=dialog.destroy).pack(side=tk.LEFT, padx=5)
     
     def show_quick_stats(self):
         """Show quick invoice statistics"""

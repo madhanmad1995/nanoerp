@@ -296,9 +296,12 @@ class Reports(ttk.Frame):
                 i.date,
                 c.name as customer_name,
                 i.subtotal,
+                i.discount_amount,
+                i.discounted_subtotal,
                 i.tax_amount,
                 i.total,
                 i.status,
+                p.method as payment_method,
                 COUNT(ii.id) as items_count
             FROM invoices i
             LEFT JOIN customers c ON i.customer_id = c.id
@@ -324,13 +327,16 @@ class Reports(ttk.Frame):
                 row['date'],
                 row['customer_name'] or 'Walk-in',
                 f"₹{row['subtotal']:.2f}",
+                f"₹{row['discount_amount']:.2f}",
+                f"₹{row['tax_amount']:.2f}",
                 f"₹{row['tax_amount']:.2f}",
                 f"₹{row['total']:.2f}",
                 row['status'],
+                row['payment_method'] or 'Not Paid',
                 row['items_count']
             ))
         
-        columns = ('Invoice #', 'Date', 'Customer', 'Subtotal', 'Tax', 'Total', 'Status', 'Items')
+        columns = ('Invoice #', 'Date', 'Customer', 'Subtotal', 'Discount','Tax', 'Total', 'Status','Payment Method', 'Items')
         
         summary = f"Date Range: {from_date} to {to_date}\n"
         summary += f"Total Invoices: {total_invoices}\n"
@@ -340,6 +346,53 @@ class Reports(ttk.Frame):
         
         self.show_report_dialog(f"Sales Report ({from_date} to {to_date})", 
                                report_data, columns, summary)
+    def generate_payment_method_report(self):
+        """Generate payment method analysis report"""
+        query = '''
+            SELECT 
+                method,
+                COUNT(*) as transaction_count,
+                SUM(amount) as total_amount,
+                AVG(amount) as avg_amount,
+                MIN(payment_date) as first_payment,
+                MAX(payment_date) as last_payment
+            FROM payments
+            GROUP BY method
+            ORDER BY total_amount DESC
+        '''
+    
+        rows = db.fetch_all(query)
+    
+        # Prepare data for display
+        report_data = []
+        for row in rows:
+            report_data.append((
+                row['method'],
+                row['transaction_count'],
+                f"₹{row['total_amount']:.2f}",
+                f"₹{row['avg_amount']:.2f}",
+                row['first_payment'],
+                row['last_payment']
+            ))
+    
+        # Calculate totals
+        total_query = '''
+            SELECT 
+                COUNT(*) as total_count,
+                SUM(amount) as total_amount
+            FROM payments
+        '''
+        total_row = db.fetch_one(total_query)
+    
+        columns = ('Payment Method', 'Transactions', 'Total Amount', 'Average', 'First Payment', 'Last Payment')
+    
+        summary = f"Payment Method Analysis\n"
+        summary += f"Total Transactions: {total_row['total_count']}\n"
+        summary += f"Total Amount: ₹{total_row['total_amount'] or 0:.2f}\n"
+        summary += f"Payment Methods: {len(rows)}"
+    
+        self.show_report_dialog("Payment Method Report", report_data, columns, summary)    
+
     
     def generate_expense_report(self):
         """Generate expense analysis report"""

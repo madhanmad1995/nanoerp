@@ -93,6 +93,31 @@ def init_db():
     """Initialize database tables"""
     try:
         print("Initializing database tables...")
+
+        # DEBUG: Print the SQL that will be executed
+        print("\nDEBUG: Will create invoices table with this SQL:")
+        invoices_sql = '''
+            CREATE TABLE IF NOT EXISTS invoices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                invoice_number TEXT UNIQUE NOT NULL,
+                customer_id INTEGER,
+                date DATE NOT NULL,
+                due_date DATE,
+                subtotal REAL NOT NULL DEFAULT 0,
+                discount_amount REAL NOT NULL DEFAULT 0,
+                discount_percentage REAL NOT NULL DEFAULT 0,
+                discounted_subtotal REAL NOT NULL DEFAULT 0,
+                tax_rate REAL NOT NULL DEFAULT 0,
+                tax_amount REAL NOT NULL DEFAULT 0,
+                total REAL NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'pending',
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers (id)
+            )
+        '''
+        print(invoices_sql)
         
         # Check if connection is established
         if not db.connection:
@@ -136,6 +161,9 @@ def init_db():
                 date DATE NOT NULL,
                 due_date DATE,
                 subtotal REAL NOT NULL DEFAULT 0,
+                discount_amount REAL NOT NULL DEFAULT 0,
+                discount_percentage REAL NOT NULL DEFAULT 0,
+                discounted_subtotal REAL NOT NULL DEFAULT 0,
                 tax_rate REAL NOT NULL DEFAULT 0,
                 tax_amount REAL NOT NULL DEFAULT 0,
                 total REAL NOT NULL DEFAULT 0,
@@ -210,6 +238,8 @@ def init_db():
             ('default_tax_rate', '18'),
             ('currency_symbol', '₹'),
             ('invoice_prefix', 'INV'),
+            ('payment_methods', 'Cash,Card,Credit,UPI'),
+             ('default_payment_method', 'Cash'),
         ]
         
         for key, value in default_settings:
