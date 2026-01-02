@@ -534,30 +534,6 @@ class Invoices(ttk.Frame):
         ttk.Button(customer_btn_frame, text="👁️ View Selected", 
                   command=self.view_selected_customer, width=18).pack(side=tk.LEFT, padx=5)
         
-        # # Customer info display (when selected)
-        # self.customer_info_frame = ttk.LabelFrame(detail_frame, text="Customer Information", padding=10)
-        
-        # # Create customer info labels
-        # self.customer_info_grid = ttk.Frame(self.customer_info_frame)
-        # self.customer_info_grid.pack(fill=tk.X)
-        
-        # # Name
-        # ttk.Label(self.customer_info_grid, text="Name: ", font=('Arial', 9)).grid(row=0, column=0, sticky=tk.W, pady=2)
-        # self.customer_name_value = ttk.Label(self.customer_info_grid, text="", font=('Arial', 9, 'bold'))
-        # self.customer_name_value.grid(row=0, column=1, sticky=tk.W, pady=2, padx=(5, 20))
-        
-        # # Phone
-        # ttk.Label(self.customer_info_grid, text="Phone: ", font=('Arial', 9)).grid(row=0, column=2, sticky=tk.W, pady=2)
-        # self.customer_phone_value = ttk.Label(self.customer_info_grid, text="", font=('Arial', 9, 'bold'))
-        # self.customer_phone_value.grid(row=0, column=3, sticky=tk.W, pady=2, padx=(5, 20))
-        
-        # # Email
-        # ttk.Label(self.customer_info_grid, text="Email: ", font=('Arial', 9)).grid(row=1, column=0, sticky=tk.W, pady=2)
-        # self.customer_email_value = ttk.Label(self.customer_info_grid, text="", font=('Arial', 9, 'bold'))
-        # self.customer_email_value.grid(row=1, column=1, sticky=tk.W, pady=2, padx=(5, 20), columnspan=3)
-        
-        # # Hide initially
-        # self.customer_info_frame.pack_forget()
         
         # Items list (Treeview)
         items_frame = ttk.LabelFrame(detail_frame, text="Items")
@@ -576,6 +552,7 @@ class Invoices(ttk.Frame):
         columns = ('Product', 'Description', 'Qty', 'Price', 'Total')
         self.items_tree = ttk.Treeview(items_frame, columns=columns, 
                                       show='headings', height=5)
+        self.items_tree.bind("<Double-1>", self.on_item_cell_double_click)
         
         # Define headings
         self.items_tree.heading('Product', text='Product')
@@ -1130,7 +1107,59 @@ class Invoices(ttk.Frame):
                 f"₹{item.unit_price:.2f}",
                 f"₹{item.total:.2f}"
             ), tags=(str(idx),))
-    
+    def on_item_cell_double_click(self, event):
+        region = self.items_tree.identify("region", event.x, event.y)
+        if region != "cell":
+            return
+
+        column = self.items_tree.identify_column(event.x)
+        row_id = self.items_tree.identify_row(event.y)
+
+        # Qty column is column #3 (Product=1, Desc=2, Qty=3)
+        if column != "#3" or not row_id:
+            return
+
+        # Get item index from tags
+        item = self.items_tree.item(row_id)
+        tags = item.get("tags", [])
+        if not tags:
+            return
+
+        idx = int(tags[0])
+        invoice_item = self.invoice_items[idx]
+
+        # Cell bounding box
+        x, y, width, height = self.items_tree.bbox(row_id, column)
+
+        # Create entry widget
+        entry = ttk.Entry(self.items_tree, width=6)
+        entry.place(x=x, y=y, width=width, height=height)
+        entry.insert(0, str(invoice_item.quantity))
+        entry.focus()
+
+        def save_qty(event=None):
+            try:
+                new_qty = float(entry.get())
+                if new_qty <= 0:
+                    raise ValueError
+
+                invoice_item.quantity = new_qty
+                invoice_item.calculate_total()
+
+                self.update_items_tree()
+                self.calculate_totals()
+            except ValueError:
+                messagebox.showwarning("Invalid Quantity", "Please enter a valid quantity.")
+            finally:
+                entry.destroy()
+
+        def cancel_edit(event=None):
+            entry.destroy()
+
+        entry.bind("<Return>", save_qty)
+        entry.bind("<FocusOut>", save_qty)
+        entry.bind("<Escape>", cancel_edit)
+
     def calculate_totals(self):
         """Calculate invoice totals with discount"""
         subtotal = sum(item.total for item in self.invoice_items)
@@ -1258,7 +1287,7 @@ class Invoices(ttk.Frame):
         
         self.dialog_product_var = tk.StringVar()
         product_combo = ttk.Combobox(product_frame, textvariable=self.dialog_product_var, 
-                                    state="readonly", width=40)
+                                    state="normal", width=40)
         product_combo.pack(side=tk.LEFT)
         
         # Load products
@@ -1272,6 +1301,7 @@ class Invoices(ttk.Frame):
                 item_text += f" (Stock: {product.stock})"
             product_list.append(item_text)
             self.dialog_products_map[item_text] = product
+            self._all_product_values = product_list[:]   # store master list
         
         product_combo['values'] = product_list
         if product_list:
@@ -1306,8 +1336,7 @@ class Invoices(ttk.Frame):
                 product = self.dialog_products_map[selected]
                 self.dialog_price_var.set(product.price)
                 # Auto-fill description if empty
-                if product.description and not self.dialog_desc_var.get():
-                    self.dialog_desc_var.set(product.description)
+                self.dialog_desc_var.set(product.description or product.name)
         
         self.dialog_product_var.trace('w', update_price)
         update_price()  # Initial update
