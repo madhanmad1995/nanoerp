@@ -15,7 +15,7 @@ class MainWindow:
         self.root.title("Nano ERP - Business Management System")
         # Start with maximized window
         self.root.state('zoomed')  # Use 'zoomed' for Windows/Linux
-        self.root.geometry("1300x750")
+        self.root.geometry("1200x700")
         
         # Set minimum size
         self.root.minsize(1000, 600)

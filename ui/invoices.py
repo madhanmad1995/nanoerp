@@ -471,7 +471,7 @@ class Invoices(ttk.Frame):
         # Define columns
         self.invoice_tree.column('ID', width=80, anchor=tk.CENTER)
         self.invoice_tree.column('Date', width=80)
-        self.invoice_tree.column('Customer', width=120)
+        self.invoice_tree.column('Customer', width=100)
         self.invoice_tree.column('Amount', width=90, anchor=tk.E)
         self.invoice_tree.column('Status', width=80)
         
@@ -530,9 +530,9 @@ class Invoices(ttk.Frame):
         customer_btn_frame.pack(fill=tk.X, pady=(5, 0))
         
         ttk.Button(customer_btn_frame, text="➕ Add New Customer", 
-                  command=self.add_new_customer_dialog, width=20).pack(side=tk.LEFT)
+                  command=self.add_new_customer_dialog, width=22).pack(side=tk.LEFT)
         ttk.Button(customer_btn_frame, text="👁️ View Selected", 
-                  command=self.view_selected_customer, width=15).pack(side=tk.LEFT, padx=5)
+                  command=self.view_selected_customer, width=18).pack(side=tk.LEFT, padx=5)
         
         # # Customer info display (when selected)
         # self.customer_info_frame = ttk.LabelFrame(detail_frame, text="Customer Information", padding=10)
@@ -560,22 +560,22 @@ class Invoices(ttk.Frame):
         # self.customer_info_frame.pack_forget()
         
         # Items list (Treeview)
-        items_frame = ttk.LabelFrame(detail_frame, text="Items", padding=10)
-        items_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        
+        items_frame = ttk.LabelFrame(detail_frame, text="Items")
+        items_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 8), padx=5)
+
         # Items toolbar
         items_toolbar = ttk.Frame(items_frame)
-        items_toolbar.pack(fill=tk.X, pady=(0, 10))
+        items_toolbar.pack(fill=tk.X, padx=8, pady=6)
         
         ttk.Button(items_toolbar, text="➕ Add Item", 
-                  command=self.add_item_dialog).pack(side=tk.LEFT)
+                  command=self.add_item_dialog,width=12).pack(side=tk.LEFT)
         ttk.Button(items_toolbar, text="➖ Remove Selected", 
-                  command=self.remove_selected_item).pack(side=tk.LEFT, padx=5)
+                  command=self.remove_selected_item,width=20).pack(side=tk.LEFT, padx=5)
         
         # Items treeview
         columns = ('Product', 'Description', 'Qty', 'Price', 'Total')
         self.items_tree = ttk.Treeview(items_frame, columns=columns, 
-                                      show='headings', height=8)
+                                      show='headings', height=5)
         
         # Define headings
         self.items_tree.heading('Product', text='Product')
@@ -585,8 +585,8 @@ class Invoices(ttk.Frame):
         self.items_tree.heading('Total', text='Total (₹)')
         
         # Define columns
-        self.items_tree.column('Product', width=150)
-        self.items_tree.column('Description', width=200)
+        self.items_tree.column('Product', width=100)
+        self.items_tree.column('Description', width=180)
         self.items_tree.column('Qty', width=60, anchor=tk.E)
         self.items_tree.column('Price', width=80, anchor=tk.E)
         self.items_tree.column('Total', width=90, anchor=tk.E)
@@ -599,63 +599,96 @@ class Invoices(ttk.Frame):
         self.items_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # Totals frame
+        # Totals frame (VERTICAL, RIGHT-ALIGNED)
         totals_frame = ttk.Frame(detail_frame)
         totals_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        # Subtotal
-        ttk.Label(totals_frame, text="Subtotal:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT)
+
+        # Align totals to the right
+        totals_inner = ttk.Frame(totals_frame)
+        totals_inner.pack(anchor=tk.W, padx=10)
+
+        # Row 0 — Subtotal
+        ttk.Label(totals_inner, text="Subtotal :", font=('Arial', 10)).grid(
+        row=0, column=0, sticky=tk.W, pady=3, padx=(0, 10)
+        )
         self.subtotal_var = tk.StringVar(value="₹0.00")
-        ttk.Label(totals_frame, textvariable=self.subtotal_var, 
-                 font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=5)
-        # Discount
-        ttk.Label(totals_frame, text="Discount:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(20, 0))
-        self.discount_type = tk.StringVar(value="percentage")  # "percentage" or "amount"
-        discount_type_combo = ttk.Combobox(totals_frame, textvariable=self.discount_type, 
-                                      values=["percentage", "amount"], state="readonly", width=10)
+        ttk.Label(totals_inner, textvariable=self.subtotal_var, font=('Arial', 10)).grid(
+        row=0, column=1, sticky=tk.W, pady=3
+        )
+        # Row 1 — Discount
+        discount_row = ttk.Frame(totals_inner)
+        discount_row.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=3)
+
+        ttk.Label(discount_row, text="Discount :", font=('Arial', 10)).pack(side=tk.LEFT)
+
+        self.discount_type = tk.StringVar(value="percentage")
+        discount_type_combo = ttk.Combobox(
+            discount_row,
+            textvariable=self.discount_type,
+            values=["percentage", "amount"],
+            state="readonly",
+            width=10
+        )
         discount_type_combo.pack(side=tk.LEFT, padx=5)
-    
+
         self.discount_value = tk.DoubleVar(value=0.0)
-        discount_spin = ttk.Spinbox(totals_frame, from_=0, to=10000, 
-                               textvariable=self.discount_value, width=8)
+        discount_spin = ttk.Spinbox(
+            discount_row,
+            from_=0,
+            to=10000,
+            textvariable=self.discount_value,
+            width=8
+        )
         discount_spin.pack(side=tk.LEFT, padx=5)
+
         self.discount_amount_var = tk.StringVar(value="₹0.00")
-        ttk.Label(totals_frame, textvariable=self.discount_amount_var).pack(side=tk.LEFT, padx=5)
+        ttk.Label(discount_row, textvariable=self.discount_amount_var).pack(side=tk.LEFT, padx=5)
+
         discount_type_combo.bind('<<ComboboxSelected>>', lambda e: self.calculate_totals())
         discount_spin.bind('<KeyRelease>', lambda e: self.calculate_totals())
         discount_spin.bind('<<Increment>>', lambda e: self.calculate_totals())
         discount_spin.bind('<<Decrement>>', lambda e: self.calculate_totals())
-    
-        self.discount_amount_var = tk.StringVar(value="₹0.00")
-        ttk.Label(totals_frame, textvariable=self.discount_amount_var).pack(side=tk.LEFT, padx=5)    
-        
-        # Tax
-        ttk.Label(totals_frame, text="Tax (%):", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, padx=(20, 0))
+
+        # Row 2 — Tax
+        tax_row = ttk.Frame(totals_inner)
+        tax_row.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=3)
+
+        ttk.Label(tax_row, text="Tax (%) :", font=('Arial', 10)).pack(side=tk.LEFT)
         self.tax_rate_var = tk.DoubleVar(value=18.0)
-        tax_spin = ttk.Spinbox(totals_frame, from_=0, to=100, 
-                              textvariable=self.tax_rate_var, width=8)
+        tax_spin = ttk.Spinbox(
+            tax_row,
+            from_=0,
+            to=100,
+            textvariable=self.tax_rate_var,
+            width=8
+        )
         tax_spin.pack(side=tk.LEFT, padx=5)
+
+        self.tax_amount_var = tk.StringVar(value="₹0.00")
+        ttk.Label(tax_row, textvariable=self.tax_amount_var).pack(side=tk.LEFT, padx=5)
+
         tax_spin.bind('<KeyRelease>', lambda e: self.calculate_totals())
         tax_spin.bind('<<Increment>>', lambda e: self.calculate_totals())
         tax_spin.bind('<<Decrement>>', lambda e: self.calculate_totals())
-        
-        self.tax_amount_var = tk.StringVar(value="₹0.00")
-        ttk.Label(totals_frame, textvariable=self.tax_amount_var).pack(side=tk.LEFT, padx=5)
-        
-        # Total
-        ttk.Label(totals_frame, text="Total:", font=('Arial', 12, 'bold')).pack(side=tk.LEFT, padx=(20, 0))
+
+
+        # Separator
+        ttk.Separator(totals_inner, orient=tk.HORIZONTAL).grid(
+            row=3, column=0, columnspan=2, sticky="ew", pady=6
+        )
+
+        # Row 4 — Total
+        ttk.Label(totals_inner, text="Total :", font=('Arial', 11, 'bold')).grid(
+            row=4, column=0, sticky=tk.W, pady=4, padx=(0, 10)
+        )
         self.total_var = tk.StringVar(value="₹0.00")
-        ttk.Label(totals_frame, textvariable=self.total_var, 
-                 font=('Arial', 12, 'bold'), foreground='green').pack(side=tk.LEFT, padx=5)
-        
-        # Notes
-        notes_frame = ttk.Frame(detail_frame)
-        notes_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        ttk.Label(notes_frame, text="Notes:", font=('Arial', 10, 'bold')).pack(side=tk.LEFT, anchor=tk.N)
-        self.notes_text = tk.Text(notes_frame, height=4, width=50)
-        self.notes_text.pack(side=tk.LEFT, padx=5, fill=tk.BOTH, expand=True)
-        
+        ttk.Label(
+            totals_inner,
+            textvariable=self.total_var,
+            font=('Arial', 11, 'bold'),
+            foreground='green'
+        ).grid(row=4, column=1, sticky=tk.W, pady=4)
+
         # Action buttons
         btn_frame = ttk.Frame(detail_frame)
         btn_frame.pack(fill=tk.X)
@@ -1007,8 +1040,8 @@ class Invoices(ttk.Frame):
             tax_rate=row['tax_rate'],
             tax_amount=row['tax_amount'],
             total=row['total'],
-            status=row['status'],
-            notes=row['notes'] or ""
+            status=row['status'] or ""
+            # notes=row['notes'] 
         )
         
         # Load items
@@ -1055,9 +1088,9 @@ class Invoices(ttk.Frame):
         else:
             self.discount_value.set(0.0)
         
-        # Set notes
-        self.notes_text.delete(1.0, tk.END)
-        self.notes_text.insert(1.0, self.current_invoice.notes)
+        # # Set notes
+        # self.notes_text.delete(1.0, tk.END)
+        # self.notes_text.insert(1.0, self.current_invoice.notes)
         
         # Update items tree
         self.update_items_tree()
@@ -1187,7 +1220,7 @@ class Invoices(ttk.Frame):
         self.due_date_var.set("")
         self.customer_search.set("")
         self.tax_rate_var.set(18.0)
-        self.notes_text.delete(1.0, tk.END)
+        # self.notes_text.delete(1.0, tk.END)
         self.subtotal_var.set("₹0.00")
         self.tax_amount_var.set("₹0.00")
         self.total_var.set("₹0.00")
@@ -1446,7 +1479,7 @@ class Invoices(ttk.Frame):
         invoice.date = invoice_date
         invoice.due_date = due_date
         invoice.tax_rate = self.tax_rate_var.get()
-        invoice.notes = self.notes_text.get(1.0, tk.END).strip()
+        # invoice.notes = self.notes_text.get(1.0, tk.END).strip()
         invoice.items = self.invoice_items
 
         # Calculate and store discount
@@ -1472,7 +1505,7 @@ class Invoices(ttk.Frame):
         invoice.date = invoice_date
         invoice.due_date = due_date
         invoice.tax_rate = self.tax_rate_var.get()
-        invoice.notes = self.notes_text.get(1.0, tk.END).strip()
+        # invoice.notes = self.notes_text.get(1.0, tk.END).strip()
         invoice.items = self.invoice_items 
          # Set discount values
         if discount_type == "percentage":
