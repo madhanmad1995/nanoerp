@@ -286,8 +286,8 @@ class MainWindow:
                     from ui.expenses import Expenses
                     self.frames[frame_name] = Expenses(self.content_frame, app=self)
                 elif frame_class == "Reports":
-                    # Create Reports instance
-                    self.frames[frame_name] = ReportsFrame(self.content_frame, app=self)
+                    from ui.reports import Reports
+                    self.frames[frame_name] = Reports(self.content_frame, app=self)
                 else:
                     # For other frames, use the provided class
                     self.frames[frame_name] = frame_class(self.content_frame, *args, **kwargs)
@@ -499,532 +499,532 @@ class MainWindow:
             self.root.destroy()
 
 
-class ReportsFrame(ttk.Frame):
-    """Reports frame with proper export functionality"""
-    def __init__(self, parent, app):
-        super().__init__(parent)
-        self.app = app
-        self.report_data = None  # Store generated report data
-        self.create_widgets()
+# class ReportsFrame(ttk.Frame):
+#     """Reports frame with proper export functionality"""
+#     def __init__(self, parent, app):
+#         super().__init__(parent)
+#         self.app = app
+#         self.report_data = None  # Store generated report data
+#         self.create_widgets()
     
-    def create_widgets(self):
-        """Create report widgets"""
-        # Main container
-        main_frame = ttk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+#     def create_widgets(self):
+#         """Create report widgets"""
+#         # Main container
+#         main_frame = ttk.Frame(self)
+#         main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
-        # Header
-        header_frame = ttk.Frame(main_frame)
-        header_frame.pack(fill=tk.X, pady=(0, 20))
+#         # Header
+#         header_frame = ttk.Frame(main_frame)
+#         header_frame.pack(fill=tk.X, pady=(0, 20))
         
-        # Use the PageTitle style instead of hardcoded font
-        ttk.Label(header_frame, text="Reports", style='PageTitle.TLabel').pack(side=tk.LEFT)
+#         # Use the PageTitle style instead of hardcoded font
+#         ttk.Label(header_frame, text="Reports", style='PageTitle.TLabel').pack(side=tk.LEFT)
         
-        # Control frame for filters and buttons
-        control_frame = ttk.LabelFrame(main_frame, text="Report Controls", padding=10)
-        control_frame.pack(fill=tk.X, pady=(0, 20))
+#         # Control frame for filters and buttons
+#         control_frame = ttk.LabelFrame(main_frame, text="Report Controls", padding=10)
+#         control_frame.pack(fill=tk.X, pady=(0, 20))
         
-        # Date range
-        ttk.Label(control_frame, text="Date Range:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+#         # Date range
+#         ttk.Label(control_frame, text="Date Range:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         
-        self.start_date = tk.StringVar(value="2024-01-01")
-        self.end_date = tk.StringVar(value="2024-12-31")
+#         self.start_date = tk.StringVar(value="2024-01-01")
+#         self.end_date = tk.StringVar(value="2024-12-31")
         
-        ttk.Entry(control_frame, textvariable=self.start_date, width=12).grid(row=0, column=1, padx=5, pady=5)
-        ttk.Label(control_frame, text="to").grid(row=0, column=2, padx=5)
-        ttk.Entry(control_frame, textvariable=self.end_date, width=12).grid(row=0, column=3, padx=5, pady=5)
+#         ttk.Entry(control_frame, textvariable=self.start_date, width=12).grid(row=0, column=1, padx=5, pady=5)
+#         ttk.Label(control_frame, text="to").grid(row=0, column=2, padx=5)
+#         ttk.Entry(control_frame, textvariable=self.end_date, width=12).grid(row=0, column=3, padx=5, pady=5)
         
-        # Report type selection
-        ttk.Label(control_frame, text="Report Type:").grid(row=0, column=4, sticky=tk.W, padx=(20, 5), pady=5)
+#         # Report type selection
+#         ttk.Label(control_frame, text="Report Type:").grid(row=0, column=4, sticky=tk.W, padx=(20, 5), pady=5)
         
-        self.report_type = tk.StringVar(value="sales")
-        report_types = ["sales", "expenses", "customers", "products", "inventory", "profit_loss"]
-        report_combo = ttk.Combobox(control_frame, textvariable=self.report_type, 
-                                   values=report_types, width=15, state="readonly")
-        report_combo.grid(row=0, column=5, padx=5, pady=5)
+#         self.report_type = tk.StringVar(value="sales")
+#         report_types = ["sales", "expenses", "customers", "products", "inventory", "profit_loss"]
+#         report_combo = ttk.Combobox(control_frame, textvariable=self.report_type, 
+#                                    values=report_types, width=15, state="readonly")
+#         report_combo.grid(row=0, column=5, padx=5, pady=5)
         
-        # Generate button
-        ttk.Button(control_frame, text="📊 Generate Report", 
-                  command=self.generate_report).grid(row=0, column=6, padx=20, pady=5)
+#         # Generate button
+#         ttk.Button(control_frame, text="📊 Generate Report", 
+#                   command=self.generate_report).grid(row=0, column=6, padx=20, pady=5)
         
-        # Export buttons frame
-        export_frame = ttk.Frame(control_frame)
-        export_frame.grid(row=0, column=7, padx=20, pady=5)
+#         # Export buttons frame
+#         export_frame = ttk.Frame(control_frame)
+#         export_frame.grid(row=0, column=7, padx=20, pady=5)
         
-        self.csv_btn = ttk.Button(export_frame, text="📥 Export CSV", 
-                                  command=self.export_csv, state=tk.DISABLED)
-        self.csv_btn.pack(side=tk.LEFT, padx=2)
+#         self.csv_btn = ttk.Button(export_frame, text="📥 Export CSV", 
+#                                   command=self.export_csv, state=tk.DISABLED)
+#         self.csv_btn.pack(side=tk.LEFT, padx=2)
         
-        # Results frame
-        results_frame = ttk.LabelFrame(main_frame, text="Report Results", padding=10)
-        results_frame.pack(fill=tk.BOTH, expand=True)
+#         # Results frame
+#         results_frame = ttk.LabelFrame(main_frame, text="Report Results", padding=10)
+#         results_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Create treeview for results
-        columns = ("ID", "Date", "Description", "Amount", "Status")
-        self.tree = ttk.Treeview(results_frame, columns=columns, show="headings", height=15)
+#         # Create treeview for results
+#         columns = ("ID", "Date", "Description", "Amount", "Status")
+#         self.tree = ttk.Treeview(results_frame, columns=columns, show="headings", height=15)
         
-        # Define headings
-        self.tree.heading("ID", text="ID")
-        self.tree.heading("Date", text="Date")
-        self.tree.heading("Description", text="Description")
-        self.tree.heading("Amount", text="Amount")
-        self.tree.heading("Status", text="Status")
+#         # Define headings
+#         self.tree.heading("ID", text="ID")
+#         self.tree.heading("Date", text="Date")
+#         self.tree.heading("Description", text="Description")
+#         self.tree.heading("Amount", text="Amount")
+#         self.tree.heading("Status", text="Status")
         
-        # Define column widths
-        self.tree.column("ID", width=50)
-        self.tree.column("Date", width=100)
-        self.tree.column("Description", width=300)
-        self.tree.column("Amount", width=100)
-        self.tree.column("Status", width=80)
+#         # Define column widths
+#         self.tree.column("ID", width=50)
+#         self.tree.column("Date", width=100)
+#         self.tree.column("Description", width=300)
+#         self.tree.column("Amount", width=100)
+#         self.tree.column("Status", width=80)
         
-        # Add scrollbar
-        scrollbar = ttk.Scrollbar(results_frame, orient=tk.VERTICAL, command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+#         # Add scrollbar
+#         scrollbar = ttk.Scrollbar(results_frame, orient=tk.VERTICAL, command=self.tree.yview)
+#         self.tree.configure(yscrollcommand=scrollbar.set)
         
-        # Layout
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
+#         # Layout
+#         self.tree.grid(row=0, column=0, sticky="nsew")
+#         scrollbar.grid(row=0, column=1, sticky="ns")
         
-        results_frame.grid_rowconfigure(0, weight=1)
-        results_frame.grid_columnconfigure(0, weight=1)
+#         results_frame.grid_rowconfigure(0, weight=1)
+#         results_frame.grid_columnconfigure(0, weight=1)
         
-        # Summary frame
-        summary_frame = ttk.Frame(main_frame)
-        summary_frame.pack(fill=tk.X, pady=(20, 0))
+#         # Summary frame
+#         summary_frame = ttk.Frame(main_frame)
+#         summary_frame.pack(fill=tk.X, pady=(20, 0))
         
-        self.summary_label = ttk.Label(summary_frame, text="No report generated yet", 
-                                       font=('Segoe UI', 10, 'bold'))
-        self.summary_label.pack(anchor=tk.W)
+#         self.summary_label = ttk.Label(summary_frame, text="No report generated yet", 
+#                                        font=('Segoe UI', 10, 'bold'))
+#         self.summary_label.pack(anchor=tk.W)
     
-    def generate_report(self):
-        """Generate report based on selected criteria"""
-        try:
-            from database import db
-            report_type = self.report_type.get()
-            start_date = self.start_date.get()
-            end_date = self.end_date.get()
+#     def generate_report(self):
+#         """Generate report based on selected criteria"""
+#         try:
+#             from database import db
+#             report_type = self.report_type.get()
+#             start_date = self.start_date.get()
+#             end_date = self.end_date.get()
             
-            # Clear previous data
-            for item in self.tree.get_children():
-                self.tree.delete(item)
+#             # Clear previous data
+#             for item in self.tree.get_children():
+#                 self.tree.delete(item)
             
-            self.report_data = []
+#             self.report_data = []
             
-            if report_type == "sales":
-                # Sales Report - Join with customers table
-                query = """
-                    SELECT 
-                        i.id, 
-                        i.date, 
-                        c.name as customer_name, 
-                        i.total, 
-                        i.status 
-                    FROM invoices i
-                    LEFT JOIN customers c ON i.customer_id = c.id
-                    WHERE i.date BETWEEN ? AND ?
-                    ORDER BY i.date DESC
-                """
-                rows = db.fetch_all(query, (start_date, end_date))
+#             if report_type == "sales":
+#                 # Sales Report - Join with customers table
+#                 query = """
+#                     SELECT 
+#                         i.id, 
+#                         i.date, 
+#                         c.name as customer_name, 
+#                         i.total, 
+#                         i.status 
+#                     FROM invoices i
+#                     LEFT JOIN customers c ON i.customer_id = c.id
+#                     WHERE i.date BETWEEN ? AND ?
+#                     ORDER BY i.date DESC
+#                 """
+#                 rows = db.fetch_all(query, (start_date, end_date))
                 
-                if rows:
-                    for row in rows:
-                        self.tree.insert("", tk.END, values=(
-                            row['id'],
-                            row['date'],
-                            f"Sale to {row['customer_name'] or 'Unknown Customer'}",
-                            f"₹{row['total']:.2f}",
-                            row['status']
-                        ))
-                        self.report_data.append(row)
+#                 if rows:
+#                     for row in rows:
+#                         self.tree.insert("", tk.END, values=(
+#                             row['id'],
+#                             row['date'],
+#                             f"Sale to {row['customer_name'] or 'Unknown Customer'}",
+#                             f"₹{row['total']:.2f}",
+#                             row['status']
+#                         ))
+#                         self.report_data.append(row)
                     
-                    # Calculate summary (excluding cancelled)
-                    total_query = """
-                        SELECT 
-                            COUNT(*) as count, 
-                            SUM(i.total) as total 
-                        FROM invoices i
-                        LEFT JOIN customers c ON i.customer_id = c.id
-                        WHERE i.date BETWEEN ? AND ? AND i.status != 'cancelled'
-                    """
-                    total_row = db.fetch_one(total_query, (start_date, end_date))
+#                     # Calculate summary (excluding cancelled)
+#                     total_query = """
+#                         SELECT 
+#                             COUNT(*) as count, 
+#                             SUM(i.total) as total 
+#                         FROM invoices i
+#                         LEFT JOIN customers c ON i.customer_id = c.id
+#                         WHERE i.date BETWEEN ? AND ? AND i.status != 'cancelled'
+#                     """
+#                     total_row = db.fetch_one(total_query, (start_date, end_date))
                     
-                    cancelled_query = """
-                        SELECT COUNT(*) as cancelled_count 
-                        FROM invoices i
-                        LEFT JOIN customers c ON i.customer_id = c.id
-                        WHERE i.date BETWEEN ? AND ? AND i.status = 'cancelled'
-                    """
-                    cancelled_row = db.fetch_one(cancelled_query, (start_date, end_date))
+#                     cancelled_query = """
+#                         SELECT COUNT(*) as cancelled_count 
+#                         FROM invoices i
+#                         LEFT JOIN customers c ON i.customer_id = c.id
+#                         WHERE i.date BETWEEN ? AND ? AND i.status = 'cancelled'
+#                     """
+#                     cancelled_row = db.fetch_one(cancelled_query, (start_date, end_date))
                     
-                    summary = f"Sales Report: {len(rows)} total invoices ({cancelled_row['cancelled_count'] or 0} cancelled). Active total: ₹{total_row['total'] or 0:.2f}"
-                else:
-                    summary = f"Sales Report: No invoices found for the selected date range"
+#                     summary = f"Sales Report: {len(rows)} total invoices ({cancelled_row['cancelled_count'] or 0} cancelled). Active total: ₹{total_row['total'] or 0:.2f}"
+#                 else:
+#                     summary = f"Sales Report: No invoices found for the selected date range"
                 
-            elif report_type == "expenses":
-                # Expenses Report
-                query = """
-                    SELECT id, date, category, description, amount 
-                    FROM expenses 
-                    WHERE date BETWEEN ? AND ?
-                    ORDER BY date DESC
-                """
-                rows = db.fetch_all(query, (start_date, end_date))
+#             elif report_type == "expenses":
+#                 # Expenses Report
+#                 query = """
+#                     SELECT id, date, category, description, amount 
+#                     FROM expenses 
+#                     WHERE date BETWEEN ? AND ?
+#                     ORDER BY date DESC
+#                 """
+#                 rows = db.fetch_all(query, (start_date, end_date))
                 
-                if rows:
-                    for row in rows:
-                        self.tree.insert("", tk.END, values=(
-                            row['id'],
-                            row['date'],
-                            f"{row['category']}: {row['description']}",
-                            f"₹{row['amount']:.2f}",
-                            "Paid"
-                        ))
-                        self.report_data.append(row)
+#                 if rows:
+#                     for row in rows:
+#                         self.tree.insert("", tk.END, values=(
+#                             row['id'],
+#                             row['date'],
+#                             f"{row['category']}: {row['description']}",
+#                             f"₹{row['amount']:.2f}",
+#                             "Paid"
+#                         ))
+#                         self.report_data.append(row)
                     
-                    # Calculate summary
-                    total_query = """
-                        SELECT COUNT(*) as count, SUM(amount) as total 
-                        FROM expenses 
-                        WHERE date BETWEEN ? AND ?
-                    """
-                    total_row = db.fetch_one(total_query, (start_date, end_date))
+#                     # Calculate summary
+#                     total_query = """
+#                         SELECT COUNT(*) as count, SUM(amount) as total 
+#                         FROM expenses 
+#                         WHERE date BETWEEN ? AND ?
+#                     """
+#                     total_row = db.fetch_one(total_query, (start_date, end_date))
                     
-                    summary = f"Expenses Report: {total_row['count']} expenses, Total: ₹{total_row['total'] or 0:.2f}"
-                else:
-                    summary = f"Expenses Report: No expenses found for the selected date range"
+#                     summary = f"Expenses Report: {total_row['count']} expenses, Total: ₹{total_row['total'] or 0:.2f}"
+#                 else:
+#                     summary = f"Expenses Report: No expenses found for the selected date range"
                 
-            elif report_type == "customers":
-                # Customers Report
-                query = """
-                    SELECT 
-                        c.id, 
-                        c.name, 
-                        c.email, 
-                        c.phone,
-                        c.created_at,
-                        COUNT(i.id) as total_invoices,
-                        SUM(i.total) as total_spent
-                    FROM customers c
-                    LEFT JOIN invoices i ON c.id = i.customer_id
-                    WHERE c.created_at BETWEEN ? AND ?
-                    GROUP BY c.id
-                    ORDER BY c.created_at DESC
-                """
-                rows = db.fetch_all(query, (start_date, end_date))
+#             elif report_type == "customers":
+#                 # Customers Report
+#                 query = """
+#                     SELECT 
+#                         c.id, 
+#                         c.name, 
+#                         c.email, 
+#                         c.phone,
+#                         c.created_at,
+#                         COUNT(i.id) as total_invoices,
+#                         SUM(i.total) as total_spent
+#                     FROM customers c
+#                     LEFT JOIN invoices i ON c.id = i.customer_id
+#                     WHERE c.created_at BETWEEN ? AND ?
+#                     GROUP BY c.id
+#                     ORDER BY c.created_at DESC
+#                 """
+#                 rows = db.fetch_all(query, (start_date, end_date))
                 
-                if rows:
-                    for row in rows:
-                        self.tree.insert("", tk.END, values=(
-                            row['id'],
-                            row['created_at'].split()[0] if row['created_at'] else "",
-                            f"{row['name']} ({row['email']})",
-                            f"₹{row['total_spent'] or 0:.2f}",
-                            f"{row['total_invoices']} invoices"
-                        ))
-                        self.report_data.append(row)
+#                 if rows:
+#                     for row in rows:
+#                         self.tree.insert("", tk.END, values=(
+#                             row['id'],
+#                             row['created_at'].split()[0] if row['created_at'] else "",
+#                             f"{row['name']} ({row['email']})",
+#                             f"₹{row['total_spent'] or 0:.2f}",
+#                             f"{row['total_invoices']} invoices"
+#                         ))
+#                         self.report_data.append(row)
                     
-                    # Calculate summary
-                    total_customers = len(rows)
-                    active_customers = sum(1 for row in rows if row['total_invoices'] > 0)
-                    total_revenue = sum(row['total_spent'] or 0 for row in rows)
+#                     # Calculate summary
+#                     total_customers = len(rows)
+#                     active_customers = sum(1 for row in rows if row['total_invoices'] > 0)
+#                     total_revenue = sum(row['total_spent'] or 0 for row in rows)
                     
-                    summary = f"Customers Report: {total_customers} total customers, {active_customers} active, Total Revenue: ₹{total_revenue:.2f}"
-                else:
-                    summary = f"Customers Report: No customers found for the selected date range"
+#                     summary = f"Customers Report: {total_customers} total customers, {active_customers} active, Total Revenue: ₹{total_revenue:.2f}"
+#                 else:
+#                     summary = f"Customers Report: No customers found for the selected date range"
                 
-            elif report_type == "products":
-                # Products Report
-                query = """
-                    SELECT 
-                        id, 
-                        name, 
-                        category, 
-                        price, 
-                        stock,
-                        created_at,
-                        is_service
-                    FROM products
-                    WHERE created_at BETWEEN ? AND ?
-                    ORDER BY created_at DESC
-                """
-                rows = db.fetch_all(query, (start_date, end_date))
+#             elif report_type == "products":
+#                 # Products Report
+#                 query = """
+#                     SELECT 
+#                         id, 
+#                         name, 
+#                         category, 
+#                         price, 
+#                         stock,
+#                         created_at,
+#                         is_service
+#                     FROM products
+#                     WHERE created_at BETWEEN ? AND ?
+#                     ORDER BY created_at DESC
+#                 """
+#                 rows = db.fetch_all(query, (start_date, end_date))
                 
-                if rows:
-                    for row in rows:
-                        product_type = "Service" if row['is_service'] == 1 else "Product"
-                        stock_status = f"{row['stock']} units" if row['is_service'] == 0 else "N/A"
-                        self.tree.insert("", tk.END, values=(
-                            row['id'],
-                            row['created_at'].split()[0] if row['created_at'] else "",
-                            f"{row['name']} ({row['category']})",
-                            f"₹{row['price']:.2f}",
-                            f"{stock_status} - {product_type}"
-                        ))
-                        self.report_data.append(row)
+#                 if rows:
+#                     for row in rows:
+#                         product_type = "Service" if row['is_service'] == 1 else "Product"
+#                         stock_status = f"{row['stock']} units" if row['is_service'] == 0 else "N/A"
+#                         self.tree.insert("", tk.END, values=(
+#                             row['id'],
+#                             row['created_at'].split()[0] if row['created_at'] else "",
+#                             f"{row['name']} ({row['category']})",
+#                             f"₹{row['price']:.2f}",
+#                             f"{stock_status} - {product_type}"
+#                         ))
+#                         self.report_data.append(row)
                     
-                    # Calculate summary
-                    total_products = len(rows)
-                    services = sum(1 for row in rows if row['is_service'] == 1)
-                    products = total_products - services
-                    total_stock_value = sum((row['price'] * row['stock']) for row in rows if row['is_service'] == 0)
+#                     # Calculate summary
+#                     total_products = len(rows)
+#                     services = sum(1 for row in rows if row['is_service'] == 1)
+#                     products = total_products - services
+#                     total_stock_value = sum((row['price'] * row['stock']) for row in rows if row['is_service'] == 0)
                     
-                    summary = f"Products Report: {total_products} total items ({products} products, {services} services), Total Stock Value: ₹{total_stock_value:.2f}"
-                else:
-                    summary = f"Products Report: No products found for the selected date range"
+#                     summary = f"Products Report: {total_products} total items ({products} products, {services} services), Total Stock Value: ₹{total_stock_value:.2f}"
+#                 else:
+#                     summary = f"Products Report: No products found for the selected date range"
                 
-            elif report_type == "inventory":
-                # Inventory Report (Low Stock)
-                query = """
-                    SELECT 
-                        id, 
-                        name, 
-                        category, 
-                        price, 
-                        stock,
-                        created_at
-                    FROM products
-                    WHERE stock < 20 AND is_service = 0
-                    ORDER BY stock ASC
-                """
-                rows = db.fetch_all(query)
+#             elif report_type == "inventory":
+#                 # Inventory Report (Low Stock)
+#                 query = """
+#                     SELECT 
+#                         id, 
+#                         name, 
+#                         category, 
+#                         price, 
+#                         stock,
+#                         created_at
+#                     FROM products
+#                     WHERE stock < 20 AND is_service = 0
+#                     ORDER BY stock ASC
+#                 """
+#                 rows = db.fetch_all(query)
                 
-                if rows:
-                    for row in rows:
-                        status = "Critical" if row['stock'] < 5 else "Low" if row['stock'] < 10 else "Moderate"
-                        self.tree.insert("", tk.END, values=(
-                            row['id'],
-                            row['created_at'].split()[0] if row['created_at'] else "",
-                            f"{row['name']} ({row['category']})",
-                            f"₹{row['price']:.2f}",
-                            f"{row['stock']} units - {status}"
-                        ))
-                        self.report_data.append(row)
+#                 if rows:
+#                     for row in rows:
+#                         status = "Critical" if row['stock'] < 5 else "Low" if row['stock'] < 10 else "Moderate"
+#                         self.tree.insert("", tk.END, values=(
+#                             row['id'],
+#                             row['created_at'].split()[0] if row['created_at'] else "",
+#                             f"{row['name']} ({row['category']})",
+#                             f"₹{row['price']:.2f}",
+#                             f"{row['stock']} units - {status}"
+#                         ))
+#                         self.report_data.append(row)
                     
-                    # Calculate summary
-                    critical = sum(1 for row in rows if row['stock'] < 5)
-                    low = sum(1 for row in rows if 5 <= row['stock'] < 10)
-                    moderate = sum(1 for row in rows if 10 <= row['stock'] < 20)
-                    total_value = sum((row['price'] * row['stock']) for row in rows)
+#                     # Calculate summary
+#                     critical = sum(1 for row in rows if row['stock'] < 5)
+#                     low = sum(1 for row in rows if 5 <= row['stock'] < 10)
+#                     moderate = sum(1 for row in rows if 10 <= row['stock'] < 20)
+#                     total_value = sum((row['price'] * row['stock']) for row in rows)
                     
-                    summary = f"Inventory Report: {len(rows)} low stock items (Critical: {critical}, Low: {low}, Moderate: {moderate}), Total Value: ₹{total_value:.2f}"
-                else:
-                    summary = f"Inventory Report: No low stock items found"
+#                     summary = f"Inventory Report: {len(rows)} low stock items (Critical: {critical}, Low: {low}, Moderate: {moderate}), Total Value: ₹{total_value:.2f}"
+#                 else:
+#                     summary = f"Inventory Report: No low stock items found"
                 
-            elif report_type == "profit_loss":
-                # Profit & Loss Report
-                # Get sales revenue
-                sales_query = """
-                    SELECT SUM(i.total) as total_sales
-                    FROM invoices i
-                    LEFT JOIN customers c ON i.customer_id = c.id
-                    WHERE i.date BETWEEN ? AND ? AND i.status != 'cancelled'
-                """
-                sales_row = db.fetch_one(sales_query, (start_date, end_date))
-                total_sales = sales_row['total_sales'] or 0
+#             elif report_type == "profit_loss":
+#                 # Profit & Loss Report
+#                 # Get sales revenue
+#                 sales_query = """
+#                     SELECT SUM(i.total) as total_sales
+#                     FROM invoices i
+#                     LEFT JOIN customers c ON i.customer_id = c.id
+#                     WHERE i.date BETWEEN ? AND ? AND i.status != 'cancelled'
+#                 """
+#                 sales_row = db.fetch_one(sales_query, (start_date, end_date))
+#                 total_sales = sales_row['total_sales'] or 0
                 
-                # Get expenses
-                expenses_query = """
-                    SELECT SUM(amount) as total_expenses
-                    FROM expenses 
-                    WHERE date BETWEEN ? AND ?
-                """
-                expenses_row = db.fetch_one(expenses_query, (start_date, end_date))
-                total_expenses = expenses_row['total_expenses'] or 0
+#                 # Get expenses
+#                 expenses_query = """
+#                     SELECT SUM(amount) as total_expenses
+#                     FROM expenses 
+#                     WHERE date BETWEEN ? AND ?
+#                 """
+#                 expenses_row = db.fetch_one(expenses_query, (start_date, end_date))
+#                 total_expenses = expenses_row['total_expenses'] or 0
                 
-                # Calculate profit/loss
-                profit_loss = total_sales - total_expenses
+#                 # Calculate profit/loss
+#                 profit_loss = total_sales - total_expenses
                 
-                # Insert summary rows
-                self.tree.insert("", tk.END, values=(
-                    "REV",
-                    f"{start_date} to {end_date}",
-                    "Total Sales Revenue",
-                    f"₹{total_sales:.2f}",
-                    "Revenue"
-                ))
-                self.tree.insert("", tk.END, values=(
-                    "EXP",
-                    f"{start_date} to {end_date}",
-                    "Total Expenses",
-                    f"₹{total_expenses:.2f}",
-                    "Expenses"
-                ))
-                self.tree.insert("", tk.END, values=(
-                    "PL",
-                    f"{start_date} to {end_date}",
-                    "Net Profit/Loss",
-                    f"₹{profit_loss:.2f}",
-                    "Profit" if profit_loss >= 0 else "Loss"
-                ))
+#                 # Insert summary rows
+#                 self.tree.insert("", tk.END, values=(
+#                     "REV",
+#                     f"{start_date} to {end_date}",
+#                     "Total Sales Revenue",
+#                     f"₹{total_sales:.2f}",
+#                     "Revenue"
+#                 ))
+#                 self.tree.insert("", tk.END, values=(
+#                     "EXP",
+#                     f"{start_date} to {end_date}",
+#                     "Total Expenses",
+#                     f"₹{total_expenses:.2f}",
+#                     "Expenses"
+#                 ))
+#                 self.tree.insert("", tk.END, values=(
+#                     "PL",
+#                     f"{start_date} to {end_date}",
+#                     "Net Profit/Loss",
+#                     f"₹{profit_loss:.2f}",
+#                     "Profit" if profit_loss >= 0 else "Loss"
+#                 ))
                 
-                self.report_data = [
-                    {"type": "revenue", "amount": total_sales},
-                    {"type": "expenses", "amount": total_expenses},
-                    {"type": "profit_loss", "amount": profit_loss}
-                ]
+#                 self.report_data = [
+#                     {"type": "revenue", "amount": total_sales},
+#                     {"type": "expenses", "amount": total_expenses},
+#                     {"type": "profit_loss", "amount": profit_loss}
+#                 ]
                 
-                summary = f"Profit & Loss Report: Revenue: ₹{total_sales:.2f}, Expenses: ₹{total_expenses:.2f}, Net: ₹{profit_loss:.2f} ({'Profit' if profit_loss >= 0 else 'Loss'})"            
-            self.summary_label.config(text=summary)
+#                 summary = f"Profit & Loss Report: Revenue: ₹{total_sales:.2f}, Expenses: ₹{total_expenses:.2f}, Net: ₹{profit_loss:.2f} ({'Profit' if profit_loss >= 0 else 'Loss'})"            
+#             self.summary_label.config(text=summary)
             
-            # Enable export buttons if we have data
-            if self.report_data:
-                self.csv_btn.config(state=tk.NORMAL)
-                self.app.set_status(f"Report generated: {len(self.report_data)} records")
-            else:
-                self.csv_btn.config(state=tk.DISABLED)
-                self.app.set_status(f"Report generated: No data found")
+#             # Enable export buttons if we have data
+#             if self.report_data:
+#                 self.csv_btn.config(state=tk.NORMAL)
+#                 self.app.set_status(f"Report generated: {len(self.report_data)} records")
+#             else:
+#                 self.csv_btn.config(state=tk.DISABLED)
+#                 self.app.set_status(f"Report generated: No data found")
             
-        except Exception as e:
-            self.app.set_status(f"Error generating report: {e}", error=True)
-            messagebox.showerror("Error", f"Failed to generate report: {e}")
-            self.csv_btn.config(state=tk.DISABLED)
+#         except Exception as e:
+#             self.app.set_status(f"Error generating report: {e}", error=True)
+#             messagebox.showerror("Error", f"Failed to generate report: {e}")
+#             self.csv_btn.config(state=tk.DISABLED)
     
-    def export_csv(self):
-        """Export report to CSV file"""
-        if not self.report_data:
-            messagebox.showwarning("Export", "Please generate a report first before exporting.")
-            return
+#     def export_csv(self):
+#         """Export report to CSV file"""
+#         if not self.report_data:
+#             messagebox.showwarning("Export", "Please generate a report first before exporting.")
+#             return
         
-        try:
-            import csv
-            from tkinter import filedialog
-            from datetime import datetime
+#         try:
+#             import csv
+#             from tkinter import filedialog
+#             from datetime import datetime
             
-            # Ask for save location
-            filename = filedialog.asksaveasfilename(
-                defaultextension=".csv",
-                filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-                initialfile=f"{self.report_type.get()}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-            )
+#             # Ask for save location
+#             filename = filedialog.asksaveasfilename(
+#                 defaultextension=".csv",
+#                 filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+#                 initialfile=f"{self.report_type.get()}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+#             )
             
-            if not filename:
-                return  # User cancelled
+#             if not filename:
+#                 return  # User cancelled
             
-            # Write to CSV
-            with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-                report_type = self.report_type.get()
+#             # Write to CSV
+#             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+#                 report_type = self.report_type.get()
                 
-                if report_type == "sales":
-                    headers = ["ID", "Date", "Customer Name", "Total", "Status"]
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
+#                 if report_type == "sales":
+#                     headers = ["ID", "Date", "Customer Name", "Total", "Status"]
+#                     writer = csv.writer(csvfile)
+#                     writer.writerow(headers)
                     
-                    for row in self.report_data:
-                        if isinstance(row, dict):
-                            writer.writerow([
-                                row.get('id', ''),
-                                row.get('date', ''),
-                                row.get('customer_name', ''),
-                                row.get('total', 0),
-                                row.get('status', '')
-                            ])
-                        else:
-                            # Handle list/tuple
-                            writer.writerow(row)
+#                     for row in self.report_data:
+#                         if isinstance(row, dict):
+#                             writer.writerow([
+#                                 row.get('id', ''),
+#                                 row.get('date', ''),
+#                                 row.get('customer_name', ''),
+#                                 row.get('total', 0),
+#                                 row.get('status', '')
+#                             ])
+#                         else:
+#                             # Handle list/tuple
+#                             writer.writerow(row)
                 
-                elif report_type == "expenses":
-                    headers = ["ID", "Date", "Category", "Description", "Amount"]
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
+#                 elif report_type == "expenses":
+#                     headers = ["ID", "Date", "Category", "Description", "Amount"]
+#                     writer = csv.writer(csvfile)
+#                     writer.writerow(headers)
                     
-                    for row in self.report_data:
-                        if isinstance(row, dict):
-                            writer.writerow([
-                                row.get('id', ''),
-                                row.get('date', ''),
-                                row.get('category', ''),
-                                row.get('description', ''),
-                                row.get('amount', 0)
-                            ])
-                        else:
-                            writer.writerow(row)
+#                     for row in self.report_data:
+#                         if isinstance(row, dict):
+#                             writer.writerow([
+#                                 row.get('id', ''),
+#                                 row.get('date', ''),
+#                                 row.get('category', ''),
+#                                 row.get('description', ''),
+#                                 row.get('amount', 0)
+#                             ])
+#                         else:
+#                             writer.writerow(row)
                 
-                elif report_type == "customers":
-                    headers = ["ID", "Name", "Email", "Phone", "Created At", "Total Invoices", "Total Spent"]
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
+#                 elif report_type == "customers":
+#                     headers = ["ID", "Name", "Email", "Phone", "Created At", "Total Invoices", "Total Spent"]
+#                     writer = csv.writer(csvfile)
+#                     writer.writerow(headers)
                     
-                    for row in self.report_data:
-                        if isinstance(row, dict):
-                            writer.writerow([
-                                row.get('id', ''),
-                                row.get('name', ''),
-                                row.get('email', ''),
-                                row.get('phone', ''),
-                                row.get('created_at', ''),
-                                row.get('total_invoices', 0),
-                                row.get('total_spent', 0)
-                            ])
-                        else:
-                            writer.writerow(row)
+#                     for row in self.report_data:
+#                         if isinstance(row, dict):
+#                             writer.writerow([
+#                                 row.get('id', ''),
+#                                 row.get('name', ''),
+#                                 row.get('email', ''),
+#                                 row.get('phone', ''),
+#                                 row.get('created_at', ''),
+#                                 row.get('total_invoices', 0),
+#                                 row.get('total_spent', 0)
+#                             ])
+#                         else:
+#                             writer.writerow(row)
                 
-                elif report_type == "products":
-                    headers = ["ID", "Name", "Category", "Price", "Stock", "Created At", "Is Service"]
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
+#                 elif report_type == "products":
+#                     headers = ["ID", "Name", "Category", "Price", "Stock", "Created At", "Is Service"]
+#                     writer = csv.writer(csvfile)
+#                     writer.writerow(headers)
                     
-                    for row in self.report_data:
-                        if isinstance(row, dict):
-                            writer.writerow([
-                                row.get('id', ''),
-                                row.get('name', ''),
-                                row.get('category', ''),
-                                row.get('price', 0),
-                                row.get('stock', 0),
-                                row.get('created_at', ''),
-                                row.get('is_service', 0)
-                            ])
-                        else:
-                            writer.writerow(row)
+#                     for row in self.report_data:
+#                         if isinstance(row, dict):
+#                             writer.writerow([
+#                                 row.get('id', ''),
+#                                 row.get('name', ''),
+#                                 row.get('category', ''),
+#                                 row.get('price', 0),
+#                                 row.get('stock', 0),
+#                                 row.get('created_at', ''),
+#                                 row.get('is_service', 0)
+#                             ])
+#                         else:
+#                             writer.writerow(row)
                 
-                elif report_type == "inventory":
-                    headers = ["ID", "Name", "Category", "Price", "Stock", "Created At"]
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
+#                 elif report_type == "inventory":
+#                     headers = ["ID", "Name", "Category", "Price", "Stock", "Created At"]
+#                     writer = csv.writer(csvfile)
+#                     writer.writerow(headers)
                     
-                    for row in self.report_data:
-                        if isinstance(row, dict):
-                            writer.writerow([
-                                row.get('id', ''),
-                                row.get('name', ''),
-                                row.get('category', ''),
-                                row.get('price', 0),
-                                row.get('stock', 0),
-                                row.get('created_at', '')
-                            ])
-                        else:
-                            writer.writerow(row)
+#                     for row in self.report_data:
+#                         if isinstance(row, dict):
+#                             writer.writerow([
+#                                 row.get('id', ''),
+#                                 row.get('name', ''),
+#                                 row.get('category', ''),
+#                                 row.get('price', 0),
+#                                 row.get('stock', 0),
+#                                 row.get('created_at', '')
+#                             ])
+#                         else:
+#                             writer.writerow(row)
                 
-                elif report_type == "profit_loss":
-                    headers = ["Type", "Amount"]
-                    writer = csv.writer(csvfile)
-                    writer.writerow(headers)
+#                 elif report_type == "profit_loss":
+#                     headers = ["Type", "Amount"]
+#                     writer = csv.writer(csvfile)
+#                     writer.writerow(headers)
                     
-                    for row in self.report_data:
-                        if isinstance(row, dict):
-                            writer.writerow([
-                                row.get('type', ''),
-                                row.get('amount', 0)
-                            ])
-                        else:
-                            writer.writerow(row)
+#                     for row in self.report_data:
+#                         if isinstance(row, dict):
+#                             writer.writerow([
+#                                 row.get('type', ''),
+#                                 row.get('amount', 0)
+#                             ])
+#                         else:
+#                             writer.writerow(row)
                 
-                else:
-                    # Fallback for unknown report types
-                    writer = csv.writer(csvfile)
-                    if self.report_data and isinstance(self.report_data[0], dict):
-                        headers = list(self.report_data[0].keys())
-                        writer.writerow(headers)
-                        for row in self.report_data:
-                            writer.writerow([row.get(key, '') for key in headers])
-                    else:
-                        # Just write the data as-is
-                        for row in self.report_data:
-                            writer.writerow(row)
+#                 else:
+#                     # Fallback for unknown report types
+#                     writer = csv.writer(csvfile)
+#                     if self.report_data and isinstance(self.report_data[0], dict):
+#                         headers = list(self.report_data[0].keys())
+#                         writer.writerow(headers)
+#                         for row in self.report_data:
+#                             writer.writerow([row.get(key, '') for key in headers])
+#                     else:
+#                         # Just write the data as-is
+#                         for row in self.report_data:
+#                             writer.writerow(row)
             
-            self.app.set_status(f"Report exported to {filename}")
-            messagebox.showinfo("Success", f"Report exported successfully to:\n{filename}")
+#             self.app.set_status(f"Report exported to {filename}")
+#             messagebox.showinfo("Success", f"Report exported successfully to:\n{filename}")
             
-        except Exception as e:
-            self.app.set_status(f"Error exporting CSV: {e}", error=True)
-            messagebox.showerror("Error", f"Failed to export CSV: {e}")
+#         except Exception as e:
+#             self.app.set_status(f"Error exporting CSV: {e}", error=True)
+#             messagebox.showerror("Error", f"Failed to export CSV: {e}")

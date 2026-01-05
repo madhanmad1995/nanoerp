@@ -19,12 +19,12 @@ class Reports(ttk.Frame):
         """Create reports management widgets"""
         # Main container
         main_frame = ttk.Frame(self)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
         # Header
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill=tk.X, pady=(0, 20))
-        
+
         ttk.Label(header_frame, text="Reports & Analytics", 
                  font=('Segoe UI', 20, 'bold')).pack(side=tk.LEFT)
         
@@ -48,6 +48,9 @@ class Reports(ttk.Frame):
             ("📋 Invoice Report", "Detailed invoice analysis", self.generate_invoice_report),
             ("🏷️ Product Sales", "Product-wise sales analysis", self.generate_product_sales_report),
         ]
+        # Configure grid for responsive layout
+        reports_frame.grid_columnconfigure(0, weight=1)
+        reports_frame.grid_columnconfigure(1, weight=1)
         
         for i, (title, desc, command) in enumerate(reports):
             report_card = ttk.Frame(reports_frame)
@@ -66,7 +69,7 @@ class Reports(ttk.Frame):
             ttk.Button(btn_frame, text="Export CSV", 
                       command=lambda cmd=command: self.export_report(cmd), width=12).pack(side=tk.LEFT, padx=5)
             
-            reports_frame.columnconfigure(i%2, weight=1)
+            # reports_frame.columnconfigure(i%2, weight=1)
     
     def show_report_dialog(self, title, report_data, columns, summary_text=None):
         """Show report results in a dialog"""
@@ -99,7 +102,7 @@ class Reports(ttk.Frame):
         tree_frame = ttk.Frame(main_frame)
         tree_frame.pack(fill=tk.BOTH, expand=True)
         
-        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=20)
+        tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=15)
         
         # Define headings
         for col in columns:
@@ -301,51 +304,63 @@ class Reports(ttk.Frame):
                 i.tax_amount,
                 i.total,
                 i.status,
-                p.method as payment_method,
+                COALESCE(p.method, 'Credit') AS payment_method,
                 COUNT(ii.id) as items_count
             FROM invoices i
             LEFT JOIN customers c ON i.customer_id = c.id
             LEFT JOIN invoice_items ii ON i.id = ii.invoice_id
-            WHERE {where_clause}
+            LEFT JOIN payments p ON p.invoice_id = i.id
+            WHERE DATE(i.date) BETWEEN DATE(?) AND DATE(?)
             GROUP BY i.id
             ORDER BY i.date DESC
         '''
+        try:
+            rows = db.fetch_all(query, params)
+
+            if not rows:
+                messagebox.showinfo("No Data", f"No invoices found for the selected date range: {from_date} to {to_date}")
+                return
         
-        rows = db.fetch_all(query, params)
+            # Calculate totals
+            total_sales = sum(row['total'] for row in rows)
+            total_tax = sum(row['tax_amount'] for row in rows)
+            total_subtotal = sum(row['subtotal'] for row in rows)
+            total_invoices = len(rows)
         
-        # Calculate totals
-        total_sales = sum(row['total'] for row in rows)
-        total_tax = sum(row['tax_amount'] for row in rows)
-        total_subtotal = sum(row['subtotal'] for row in rows)
-        total_invoices = len(rows)
+            # Prepare data for display
+            report_data = []
+            for row in rows:
+                report_data.append((
+                    row['invoice_number'],
+                    row['date'],
+                    row['customer_name'] or 'Walk-in',
+                    f"₹{row['subtotal']:.2f}",
+                    f"₹{row['discount_amount']:.2f}",
+                    f"₹{row['tax_amount']:.2f}",
+                    f"₹{row['total']:.2f}",
+                    row['status'],
+                    row['payment_method'],
+                    row['items_count']
+                ))
         
-        # Prepare data for display
-        report_data = []
-        for row in rows:
-            report_data.append((
-                row['invoice_number'],
-                row['date'],
-                row['customer_name'] or 'Walk-in',
-                f"₹{row['subtotal']:.2f}",
-                f"₹{row['discount_amount']:.2f}",
-                f"₹{row['tax_amount']:.2f}",
-                f"₹{row['tax_amount']:.2f}",
-                f"₹{row['total']:.2f}",
-                row['status'],
-                row['payment_method'] or 'Not Paid',
-                row['items_count']
-            ))
+            columns = ('Invoice #', 'Date', 'Customer', 'Subtotal', 'Discount','Tax', 'Total', 'Status','Payment Method', 'Items')
         
-        columns = ('Invoice #', 'Date', 'Customer', 'Subtotal', 'Discount','Tax', 'Total', 'Status','Payment Method', 'Items')
+            summary = f"Sales Report\n"
+            summary = f"Date Range: {from_date} to {to_date}\n"
+            summary += f"Total Invoices: {total_invoices}\n"
+            summary += f"Total Sales: ₹{total_sales:.2f}\n"
+            summary += f"Total Tax: ₹{total_tax:.2f}\n"
+            summary += f"Net Sales: ₹{total_subtotal:.2f}"
         
-        summary = f"Date Range: {from_date} to {to_date}\n"
-        summary += f"Total Invoices: {total_invoices}\n"
-        summary += f"Total Sales: ₹{total_sales:.2f}\n"
-        summary += f"Total Tax: ₹{total_tax:.2f}\n"
-        summary += f"Net Sales: ₹{total_subtotal:.2f}"
+            self.show_report_dialog(f"Sales Report ({from_date} to {to_date})", 
+                                report_data, columns, summary)
+        except Exception as e:
+            messagebox.showerror("Database Error", f"Error generating sales report: {str(e)}")
+            print(f"Query error: {e}")
+            print(f"Query: {query}")
+            print(f"Params: {params}")
         
-        self.show_report_dialog(f"Sales Report ({from_date} to {to_date})", 
-                               report_data, columns, summary)
+
     def generate_payment_method_report(self):
         """Generate payment method analysis report"""
         query = '''
